@@ -1,0 +1,3 @@
+---
+rustup_bin: "{{ansible_env.HOME}}/.cargo/bin/rustup"
+cargo_bin: "{{ansible_env.HOME}}/.cargo/bin/cargo"
