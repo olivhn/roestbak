@@ -1,0 +1,36 @@
+
+- name: Set up Rust toolchain
+  hosts: all
+  tasks:
+    - name: Check whether rustup is available
+      ansible.builtin.stat:
+        path: "{{ rustup_bin }}"
+      register: rustup_lookup_result
+
+    - block:
+        - name: Download Rust installer
+          ansible.builtin.get_url:
+            url: https://sh.rustup.rs
+            dest: /tmp/rust_installer.sh
+            mode: u=rwx,g=,o=
+            force: true
+
+        - name: Run Rust installer
+          ansible.builtin.command: /tmp/rust_installer.sh -y
+
+        - name: Validate that rustup is available
+          ansible.builtin.stat:
+            path: "{{ rustup_bin }}"
+          register: rustup_lookup_again_result
+          failed_when: not rustup_lookup_again_result.stat.exists
+
+      when: not rustup_lookup_result.stat.exists
+
+    - name: Update Rust toolchain
+      ansible.builtin.command: "{{ rustup_bin }} update"
+
+    - name: Validate that cargo is available
+      ansible.builtin.stat:
+        path: "{{ cargo_bin }}"
+      register: cargo_lookup_result
+      failed_when: not cargo_lookup_result.stat.exists
