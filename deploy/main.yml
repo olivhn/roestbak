@@ -1,3 +1,11 @@
+- name: Install OS dependencies
+  hosts: all
+  tasks:
+    - name: Install build essentials
+      become: true
+      ansible.builtin.package:
+        name: build-essential
+        state: present
 
 - name: Set up Rust toolchain
   hosts: all
