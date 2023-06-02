@@ -42,3 +42,47 @@
         path: "{{ cargo_bin }}"
       register: cargo_lookup_result
       failed_when: not cargo_lookup_result.stat.exists
+
+- name: Build roestbak service
+  hosts: all
+  vars:
+    - project_root_local: "{{ playbook_dir }}/../"
+    - project_root_remote: "{{ ansible_env.HOME }}/src/roestbak"
+  tasks:
+    - name: Create sources directory
+      ansible.builtin.file:
+        path: "{{ project_root_remote }}"
+        state: directory
+        mode: u=rwx,g=rx,o=rx
+
+    - name: Synchronize sources
+      ansible.posix.synchronize:
+        src: '"{{ project_root_local }}/{{ item }}"'
+        dest: "{{ project_root_remote }}/"
+        archive: true
+        perms: false
+        owner: false
+        group: false
+        delete: true
+      loop:
+        - Cargo.toml
+        - Cargo.lock
+        - src
+
+    - name: Build service
+      ansible.builtin.command: "{{ cargo_bin }} build --release"
+      args:
+        chdir: "{{ project_root_remote }}"
+
+    - name: Create bin directory
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/bin"
+        state: directory
+        mode: u=rwx,g=rx,o=rx
+
+    - name: Copy service to bin directory
+      ansible.builtin.copy:
+        src: "{{ project_root_remote }}/target/release/roestbak"
+        dest: "{{ ansible_env.HOME }}/bin"
+        remote_src: true
+        mode: preserve
