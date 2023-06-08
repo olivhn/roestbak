@@ -1,0 +1,14 @@
+[Unit]
+Description=Roestbak service
+StartLimitIntervalSec=0
+
+[Service]
+ExecStart={{ ansible_facts['user_dir'] }}/bin/roestbak
+User={{ ansible_facts['user_id'] }}
+WorkingDirectory=~
+Type=exec
+Restart=always
+RestartSec=500ms
+
+[Install]
+WantedBy=multi-user.target
