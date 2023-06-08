@@ -43,7 +43,7 @@
       register: cargo_lookup_result
       failed_when: not cargo_lookup_result.stat.exists
 
-- name: Build roestbak service
+- name: Install roestbak service
   hosts: all
   vars:
     - project_root_local: "{{ playbook_dir }}/../"
@@ -86,3 +86,42 @@
         dest: "{{ ansible_env.HOME }}/bin"
         remote_src: true
         mode: preserve
+      notify: 
+        - Restart service
+
+    - name: Install service unit file
+      become: true
+      ansible.builtin.template:
+        src: files/roestbak.service.j2
+        dest: /etc/systemd/system/roestbak.service
+        owner: root
+        group: root
+        mode: u=rw,g=r,o=r
+      notify: 
+        - Restart service
+
+    - name: Disable service
+      become: true
+      ansible.builtin.systemd:
+        name: roestbak.service
+        enabled: false
+
+    - name: Enable service
+      become: true
+      ansible.builtin.systemd:
+        name: roestbak.service
+        enabled: true
+
+  post_tasks:
+    - name: Ensure service is started
+      become: true
+      ansible.builtin.systemd:
+        name: roestbak.service
+        state: started
+
+  handlers:
+    - name: Restart service
+      become: true
+      ansible.builtin.systemd:
+        name: roestbak.service
+        state: restarted
