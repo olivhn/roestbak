@@ -3,6 +3,7 @@ use std::error::Error;
 use std::io::Error as IoError;
 use std::mem;
 use std::mem::MaybeUninit;
+use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::ptr;
 
 #[derive(Copy, Clone)]
@@ -12,7 +13,7 @@ pub enum SignalIntention {
 }
 
 pub struct SignalManager {
-    signal_fd: i32,
+    signal_fd: OwnedFd,
 }
 
 impl SignalManager {
@@ -56,7 +57,7 @@ impl SignalManager {
             let mut signal_info: MaybeUninit<libc::signalfd_siginfo> = MaybeUninit::uninit();
 
             let bytes_read = libc::read(
-                self.signal_fd,
+                self.signal_fd.as_raw_fd(),
                 signal_info.as_mut_ptr() as *mut libc::c_void,
                 SIGNALFD_SIGINFO_SIZE,
             );
@@ -73,12 +74,6 @@ impl SignalManager {
 
             Ok(signal_info.assume_init())
         }
-    }
-}
-
-impl Drop for SignalManager {
-    fn drop(&mut self) {
-        unsafe { libc::close(self.signal_fd) };
     }
 }
 
@@ -171,11 +166,11 @@ fn block_signals(signal_set: libc::sigset_t) -> Result<(), IoError> {
     }
 }
 
-fn create_signal_fd(signal_set: libc::sigset_t) -> Result<i32, IoError> {
+fn create_signal_fd(signal_set: libc::sigset_t) -> Result<OwnedFd, IoError> {
     let fd = unsafe { libc::signalfd(-1, &signal_set, 0) };
     if fd == -1 {
         Err(IoError::last_os_error())
     } else {
-        Ok(fd)
+        Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 }
