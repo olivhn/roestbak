@@ -4,6 +4,7 @@ use std::error::Error;
 use std::process::{self, ExitCode};
 
 mod logging;
+mod runloop;
 mod signals;
 
 fn main() -> ExitCode {
