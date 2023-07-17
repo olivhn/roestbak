@@ -33,24 +33,23 @@ impl SignalManager {
         Ok(SignalManager { signal_fd })
     }
 
-    pub fn next_signal(&self) -> Result<SignalIntention, ReceiveError> {
-        loop {
-            let signal_info = self.read_from_signal_fd()?;
+    pub fn next_signal(&self) -> Result<Option<SignalIntention>, ReceiveError> {
+        let next_signal = self.read_from_signal_fd()?.map(|signal_info| {
             let received_signal = i32::try_from(signal_info.ssi_signo).expect(
                 "Signals are defined as i32, but the field for them in signalfd_siginfo is a u32.",
             );
 
-            if let Some(intention) = MANAGED_SIGNALS
+            MANAGED_SIGNALS
                 .iter()
                 .find(|mapping| mapping.0 == received_signal)
                 .map(|mapping| mapping.1)
-            {
-                return Ok(intention);
-            }
-        }
+                .unwrap()
+        });
+
+        Ok(next_signal)
     }
 
-    fn read_from_signal_fd(&self) -> Result<libc::signalfd_siginfo, ReceiveError> {
+    fn read_from_signal_fd(&self) -> Result<Option<libc::signalfd_siginfo>, ReceiveError> {
         const SIGNALFD_SIGINFO_SIZE: usize = mem::size_of::<libc::signalfd_siginfo>();
 
         unsafe {
@@ -63,16 +62,23 @@ impl SignalManager {
             );
 
             if bytes_read < 0 {
-                return Err(ReceiveError::CouldNotReadFromFileDescriptor {
-                    source: std::io::Error::last_os_error(),
-                });
+                let error = std::io::Error::last_os_error();
+
+                if error
+                    .raw_os_error()
+                    .is_some_and(|code| code == libc::EAGAIN)
+                {
+                    return Ok(None);
+                } else {
+                    return Err(ReceiveError::CouldNotReadFromFileDescriptor { source: error });
+                }
             }
 
             if bytes_read as usize != SIGNALFD_SIGINFO_SIZE {
                 return Err(ReceiveError::InvalidReadFromFileDescriptor);
             }
 
-            Ok(signal_info.assume_init())
+            Ok(Some(signal_info.assume_init()))
         }
     }
 }
@@ -167,7 +173,7 @@ fn block_signals(signal_set: libc::sigset_t) -> Result<(), IoError> {
 }
 
 fn create_signal_fd(signal_set: libc::sigset_t) -> Result<OwnedFd, IoError> {
-    let fd = unsafe { libc::signalfd(-1, &signal_set, 0) };
+    let fd = unsafe { libc::signalfd(-1, &signal_set, libc::SFD_NONBLOCK | libc::SFD_CLOEXEC) };
     if fd == -1 {
         Err(IoError::last_os_error())
     } else {

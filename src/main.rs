@@ -1,11 +1,15 @@
 use crate::logging::SimpleLogger;
+use crate::runloop::IterationOutcome;
 use crate::signals::{SignalIntention, SignalManager};
 use std::error::Error;
 use std::process::{self, ExitCode};
+use std::time::Duration;
 
 mod logging;
 mod runloop;
 mod signals;
+
+const RUNLOOP_INTERVAL: Duration = Duration::from_millis(20);
 
 fn main() -> ExitCode {
     match run_application() {
@@ -24,19 +28,21 @@ fn run_application() -> Result<(), Box<dyn std::error::Error>> {
 
     let signal_manager = SignalManager::install()?;
 
-    loop {
-        match signal_manager.next_signal()? {
-            SignalIntention::Terminate => {
-                log::info!("Received termination signal.");
-                break;
-            }
-            SignalIntention::ReloadConfiguration => {
-                log::info!("Ignoring configuration reload signal.");
+    runloop::start_runloop(RUNLOOP_INTERVAL, || {
+        if let Some(signal) = signal_manager.next_signal()? {
+            match signal {
+                SignalIntention::Terminate => {
+                    log::info!("Received termination signal.");
+                    return Ok(IterationOutcome::Conclude);
+                }
+                SignalIntention::ReloadConfiguration => {
+                    log::info!("Ignoring configuration reload signal.");
+                }
             }
         }
-    }
 
-    Ok(())
+        Ok(IterationOutcome::KeepGoing)
+    })
 }
 
 struct FatalErrorFormatter<'a> {
