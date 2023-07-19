@@ -1,0 +1,9 @@
+# When an input device is connected, the default rules in /usr/lib/udev/rules.d/60-persistent-input.rules will 
+# cause the creation of additional symlinks to the associated event device file. These allow for identifying 
+# devices and/or device types based on the filename alone. Unfortunately, for a reason not known to me, these 
+# default rules explicitly omit Bluetooth devices.
+
+# The rule below will cause the creation of an input/js-evdevX symlink to each event device file associated with 
+# a joystick, regardless of whether it is a Bluetooth device.
+
+ACTION=="add", SUBSYSTEM=="input", ENV{ID_INPUT_JOYSTICK}=="?*", KERNEL=="event*", SYMLINK+="input/js-evdev%n"

@@ -43,6 +43,18 @@
       register: cargo_lookup_result
       failed_when: not cargo_lookup_result.stat.exists
 
+- name: Configure udev
+  hosts: all
+  tasks:
+    - name: Install joystick rules
+      become: true
+      ansible.builtin.copy:
+        src: files/99-joystick-links.rules
+        dest: /etc/udev/rules.d/99-joystick-links.rules
+        owner: root
+        group: root
+        mode: u=rw,g=r,o=r
+
 - name: Install roestbak service
   hosts: all
   vars:
