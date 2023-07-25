@@ -5,6 +5,7 @@ use std::error::Error;
 use std::process::{self, ExitCode};
 use std::time::Duration;
 
+mod folder_monitor;
 mod logging;
 mod runloop;
 mod signals;
