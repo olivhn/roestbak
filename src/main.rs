@@ -6,6 +6,7 @@ use std::process::{self, ExitCode};
 use std::time::Duration;
 
 mod folder_monitor;
+mod gamepads;
 mod logging;
 mod runloop;
 mod signals;

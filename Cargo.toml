@@ -6,3 +6,5 @@ edition = "2021"
 [dependencies]
 libc = "0.2"
 log = { version = "0.4", features = ["std", "release_max_level_info"] }
+regex = "1"
+once_cell = "1"
