@@ -7,6 +7,96 @@
         name: build-essential
         state: present
 
+    - name: Install dynamic kernel module support framework
+      become: true
+      ansible.builtin.package:
+        name: dkms
+        state: present
+
+- name: Install xpadneo driver
+  hosts: all
+  vars:
+    - audited_commit_hash: "9b3b6968304d75faca00d1cead63f89e8895195f"
+    - audited_sources_checksum: "8c6738f428c31c48ec5a3799cb8cc28947d29b93"
+    - source_folder: "/usr/src/hid-xpadneo-{{audited_commit_hash}}"
+    - source_verification_cmd: >
+        export LC_ALL=C &&
+        /usr/bin/find {{ source_folder }} -not -type d -print0 2>/dev/null
+        | /usr/bin/sort -z
+        | /usr/bin/xargs -0 /usr/bin/cat
+        | /usr/bin/sha1sum
+        | /usr/bin/cut -d' ' -f1
+
+  tasks:
+    - name: Check whether source is installed
+      ansible.builtin.shell: "{{ source_verification_cmd }}"
+      register: verify_sources_result
+
+    - block:
+        - name: Download source archive
+          ansible.builtin.get_url:
+            url: "https://github.com/atar-axis/xpadneo/archive/{{ audited_commit_hash }}.tar.gz"
+            dest: /tmp/xpadneo.tar.gz
+            mode: u=rwx,g=,o=
+            checksum: "sha1:a943ea17d7565a2392fff3c0b5ec2ee6c13e85ea"
+
+        - name: Remove module
+          become: yes
+          ansible.builtin.command: "/usr/sbin/dkms remove hid-xpadneo/{{ audited_commit_hash }} --all"
+          register: remove_module_result
+          failed_when:
+            - remove_module_result.rc != 0
+            - '"is not located in the DKMS tree" not in remove_module_result.stderr'
+
+        - name: Erase source directory
+          become: true
+          ansible.builtin.file:
+            path: "{{ source_folder }}"
+            state: absent
+
+        - name: Create empty source directory
+          become: true
+          ansible.builtin.file:
+            path: "{{ source_folder }}"
+            state: directory
+            mode: u=rwx,g=rx,o=rx
+
+        - name: Install source
+          become: true
+          ansible.builtin.unarchive:
+            remote_src: yes
+            src: /tmp/xpadneo.tar.gz
+            dest: "{{ source_folder }}"
+            include: "xpadneo-{{ audited_commit_hash }}/hid-xpadneo"
+            extra_opts:
+              - --strip-components=2
+
+        - name: Install dkms configuration file
+          become: yes
+          ansible.builtin.copy:
+            remote_src: true
+            src: "{{ source_folder }}/dkms.conf.in"
+            dest: "{{ source_folder }}/dkms.conf"
+            mode: preserve
+
+        - name: Set version in dkms configuration file
+          become: yes
+          ansible.builtin.lineinfile:
+            path: "{{ source_folder }}/dkms.conf"
+            regexp: '^\s*PACKAGE_VERSION='
+            line: 'PACKAGE_VERSION="{{ audited_commit_hash }}"'
+
+        - name: Verify source integrity
+          ansible.builtin.shell: "{{ source_verification_cmd }}"
+          register: verify_sources_again_result
+          failed_when: verify_sources_again_result.stdout != audited_sources_checksum
+
+      when: verify_sources_result.stdout != audited_sources_checksum
+
+    - name: Build and install module
+      become: yes
+      ansible.builtin.command: "/usr/sbin/dkms install hid-xpadneo/{{ audited_commit_hash }}"
+
 - name: Set up Rust toolchain
   hosts: all
   tasks:
