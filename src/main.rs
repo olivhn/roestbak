@@ -7,6 +7,7 @@ use std::time::Duration;
 
 mod folder_monitor;
 mod gamepads;
+mod i2c;
 mod logging;
 mod runloop;
 mod signals;
