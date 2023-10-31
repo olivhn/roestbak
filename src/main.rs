@@ -8,6 +8,7 @@ use std::time::Duration;
 mod folder_monitor;
 mod gamepads;
 mod i2c;
+mod locomotion;
 mod logging;
 mod runloop;
 mod signals;
