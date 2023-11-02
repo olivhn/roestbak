@@ -1,3 +1,5 @@
+use crate::gamepads::GamepadInputInterpreter;
+use crate::locomotion::LocomotionController;
 use crate::logging::SimpleLogger;
 use crate::runloop::IterationOutcome;
 use crate::signals::{SignalIntention, SignalManager};
@@ -31,6 +33,8 @@ fn run_application() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("Starting roestbak service with PID {}.", process::id());
 
     let signal_manager = SignalManager::install()?;
+    let mut gamepad_input_interpreter = GamepadInputInterpreter::new()?;
+    let locomotion_controller = LocomotionController::new()?;
 
     runloop::start_runloop(RUNLOOP_INTERVAL, || {
         if let Some(signal) = signal_manager.next_signal()? {
@@ -44,6 +48,9 @@ fn run_application() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
+
+        let locomotion_command = gamepad_input_interpreter.process_input()?;
+        locomotion_controller.execute_command(locomotion_command)?;
 
         Ok(IterationOutcome::KeepGoing)
     })
