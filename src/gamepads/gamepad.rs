@@ -12,7 +12,7 @@ use std::path::Path;
 // No attempt has been made to deal with different values and/or events that might be reported by different
 // controllers.
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum GamepadEvent {
     ButtonPressed(Button),
     StickAdjusted(Stick, StickAxis, f64),
@@ -20,31 +20,31 @@ pub enum GamepadEvent {
     DpadAdjusted(DpadAxis, f64),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Stick {
     Left,
     Right,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum StickAxis {
     Vertical,
     Horizontal,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Trigger {
     Left,
     Right,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum DpadAxis {
     Vertical,
     Horizontal,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Button {
     A,
     B,
